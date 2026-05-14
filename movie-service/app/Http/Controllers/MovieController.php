@@ -71,7 +71,8 @@ class MovieController extends Controller
             ], 404);
         }
 
-        $response = Http::get('http://localhost:8003/api/tickets/movie/' . $id);
+        $ticketServiceUrl = env('TICKET_SERVICE_URL', 'http://ticket-service:8003');
+        $response = Http::get($ticketServiceUrl . '/api/tickets/movie/' . $id);
 
         return response()->json([
             'status' => 'success',
