@@ -15,6 +15,8 @@ WORKDIR /var/www
 
 COPY . .
 
+RUN apt-get update && apt-get install -y libpq-dev && docker-php-ext-install pdo pdo_pgsql
+
 RUN composer install --optimize-autoloader --no-scripts
 
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
