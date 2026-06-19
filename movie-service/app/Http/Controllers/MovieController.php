@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Movie;
@@ -7,72 +8,59 @@ use Illuminate\Support\Facades\Http;
 
 class MovieController extends Controller
 {
-    // PROVIDER: Semua film
     public function index()
     {
-        return response()->json([
-            'status' => 'success',
-            'data' => Movie::all()
-        ]);
+        return response()->json(['status' => 'success', 'data' => Movie::all()]);
     }
 
-    // PROVIDER: Detail film
     public function show($id)
     {
         $movie = Movie::find($id);
-        if (!$movie) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Film tidak ditemukan'
-            ], 404);
-        }
-        return response()->json([
-            'status' => 'success',
-            'data' => $movie
-        ]);
+        return $movie ? response()->json(['status' => 'success', 'data' => $movie])
+                      : response()->json(['status' => 'error', 'message' => 'Film tidak ditemukan'], 404);
     }
 
-    // PROVIDER: Tambah film
     public function store(Request $request)
     {
+        // Validasi input
+        $request->validate([
+            'title' => 'required',
+            'genre' => 'required',
+            'duration' => 'required|integer',
+            'jam_tayang' => 'required',
+            'seat_available' => 'required|integer',
+            'price' => 'required|numeric',
+        ]);
+
         $movie = Movie::create($request->all());
-        return response()->json([
-            'status' => 'success',
-            'data' => $movie
-        ], 201);
+        return response()->json(['status' => 'success', 'data' => $movie], 201);
     }
 
-    // PROVIDER: Update kursi (dipanggil TicketService)
     public function updateSeat(Request $request, $id)
     {
+        $request->validate(['change' => 'required|integer']);
+
         $movie = Movie::find($id);
-        if (!$movie) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Film tidak ditemukan'
-            ], 404);
-        }
+        if (!$movie) return response()->json(['status' => 'error', 'message' => 'Film tidak ditemukan'], 404);
+
         $movie->seat_available += $request->change;
         $movie->save();
-        return response()->json([
-            'status' => 'success',
-            'data' => $movie
-        ]);
+
+        return response()->json(['status' => 'success', 'data' => $movie]);
     }
 
-    // CONSUMER: Lihat tiket film ini dari TicketService
     public function movieTickets($id)
     {
         $movie = Movie::find($id);
-        if (!$movie) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Film tidak ditemukan'
-            ], 404);
-        }
+        if (!$movie) return response()->json(['status' => 'error', 'message' => 'Film tidak ditemukan'], 404);
 
+        // Memanggil TicketService dengan timeout agar tidak menggantung
         $ticketServiceUrl = env('TICKET_SERVICE_URL', 'http://ticket-service:8003');
-        $response = Http::get($ticketServiceUrl . '/api/tickets/movie/' . $id);
+        $response = Http::timeout(3)->get($ticketServiceUrl . '/api/tickets/movie/' . $id);
+
+        if ($response->failed()) {
+            return response()->json(['status' => 'error', 'message' => 'Ticket service tidak merespon'], 503);
+        }
 
         return response()->json([
             'status' => 'success',

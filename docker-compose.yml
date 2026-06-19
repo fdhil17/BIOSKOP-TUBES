@@ -96,6 +96,19 @@ services:
     networks:
       - bioskop-network
 
+  # --- Database Khusus Ticket Service ---
+  ticket-db:
+    image: postgres:15
+    container_name: ticket-postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=db_ticket_service
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+    networks:
+      - bioskop-network
+
+  # --- Ticket Service (Sekarang menggunakan Postgres) ---
   ticket-service:
     build:
       context: ./ticket-service
@@ -106,6 +119,9 @@ services:
     command: php artisan serve --host=0.0.0.0 --port=8003
     ports:
       - "8003:8003"
+    volumes:
+      - ./ticket-service:/var/www
+      - /var/www/vendor
     environment:
       - TZ=Asia/Jakarta
       - APP_NAME=TicketService
@@ -113,23 +129,42 @@ services:
       - APP_KEY=base64:w3Kitd9iVTcAAFH8ZsJR8EFS17xFOLHthRORDRX/7pg=
       - APP_DEBUG=true
       - APP_URL=http://localhost:8003
-      - DB_CONNECTION=mysql
-      - DB_HOST=mysql
-      - DB_PORT=3306
+      # Konfigurasi Postgres
+      - DB_CONNECTION=pgsql
+      - DB_HOST=ticket-db
+      - DB_PORT=5432
       - DB_DATABASE=db_ticket_service
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_USERNAME=user
+      - DB_PASSWORD=pass
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - QUEUE_CONNECTION=redis
       - MEMBER_SERVICE_URL=http://member-service:8001
       - MOVIE_SERVICE_URL=http://movie-service:8002
     depends_on:
-      - mysql
+      - ticket-db
       - redis
     networks:
       - bioskop-network
 
+  # --- Hasura (Sekarang Terhubung ke Postgres, pasti sukses) ---
+  hasura:
+    image: hasura/graphql-engine:v2.30.0
+    container_name: hasura-ticket
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # Menggunakan protokol postgres://
+      HASURA_GRAPHQL_DATABASE_URL: postgres://user:pass@ticket-postgres:5432/db_ticket_service
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+    depends_on:
+      - ticket-db
+    networks:
+      - bioskop-network
+      
   queue-worker:
     build:
       context: ./ticket-service
@@ -138,24 +173,27 @@ services:
     container_name: queue-worker
     restart: always
     command: php artisan queue:work redis --sleep=3 --tries=3
+    volumes:
+      - ./ticket-service:/var/www
+      - /var/www/vendor
     environment:
       - TZ=Asia/Jakarta
       - APP_NAME=QueueWorker
       - APP_ENV=local
       - APP_KEY=base64:w3Kitd9iVTcAAFH8ZsJR8EFS17xFOLHthRORDRX/7pg=
-      - DB_CONNECTION=mysql
-      - DB_HOST=mysql
-      - DB_PORT=3306
+      - DB_CONNECTION=pgsql
+      - DB_HOST=ticket-db
+      - DB_PORT=5432
       - DB_DATABASE=db_ticket_service
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_USERNAME=user
+      - DB_PASSWORD=pass
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - QUEUE_CONNECTION=redis
       - MEMBER_SERVICE_URL=http://member-service:8001
       - MOVIE_SERVICE_URL=http://movie-service:8002
     depends_on:
-      - mysql
+      - ticket-db
       - redis
       - ticket-service
     networks:
