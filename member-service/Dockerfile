@@ -8,6 +8,7 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* && \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
+    libpq-dev \
     zip \
     unzip \
     tzdata && \
@@ -24,7 +25,7 @@ RUN echo "date.timezone=Asia/Jakarta" > /usr/local/etc/php/conf.d/timezone.ini
 
 # Install PHP extensions
 RUN docker-php-ext-install \
-    pdo_mysql \
+    pdo_pgsql \
     mbstring \
     exif \
     pcntl \
@@ -50,7 +51,7 @@ RUN composer install --optimize-autoloader --no-scripts
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
 # Expose port
-EXPOSE 8003
+EXPOSE 8001
 
 # Run Laravel server
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8003"]
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8001"]
