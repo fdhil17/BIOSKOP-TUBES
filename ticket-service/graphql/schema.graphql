@@ -1,0 +1,52 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+type Query {
+    tickets: [Ticket!]! @all
+    ticketsByMember(member_id: ID!): [Ticket!]! @field(resolver: "App\\GraphQL\\Queries\\TicketsByMember@resolve")
+    ticketsByMovie(movie_id: ID!): [Ticket!]! @field(resolver: "App\\GraphQL\\Queries\\TicketsByMovie@resolve")
+}
+
+type Mutation {
+    createTicket(
+        member_id: ID! @rules(apply: ["required", "integer"])
+        movie_id: ID! @rules(apply: ["required", "integer"])
+        quantity: Int! @rules(apply: ["required", "integer", "min:1"])
+    ): TicketResponse! @field(resolver: "App\\GraphQL\\Mutations\\CreateTicket@resolve")
+
+    cancelTicket(
+        id: ID! @rules(apply: ["required", "integer"])
+    ): TicketResponse! @field(resolver: "App\\GraphQL\\Mutations\\CancelTicket@resolve")
+}
+
+type Ticket {
+    id: ID!
+    member_id: ID!
+    movie_id: ID!
+    quantity: Int!
+    total_price: Float!
+    status: String!
+    created_at: DateTime
+    updated_at: DateTime
+}
+
+type TicketResponse {
+    status: String!
+    message: String!
+    data: Ticket
+    member: MemberInfo
+    movie: MovieInfo
+}
+
+type MemberInfo {
+    id: ID
+    name: String
+    email: String
+}
+
+type MovieInfo {
+    id: ID
+    title: String
+    price: Float
+    seat_available: Int
+}

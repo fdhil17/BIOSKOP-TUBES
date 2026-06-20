@@ -1,0 +1,3 @@
+CREATE DATABASE IF NOT EXISTS db_member_service;
+CREATE DATABASE IF NOT EXISTS db_movie_service;
+CREATE DATABASE IF NOT EXISTS db_ticket_service;
