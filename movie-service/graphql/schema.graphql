@@ -1,0 +1,47 @@
+"A datetime string with format `Y-m-d H:i:s`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+type Query {
+    movies: [Movie!]! @all
+
+    movie(
+        id: ID! @eq
+    ): Movie @find
+}
+
+type Mutation {
+    createMovie(
+        title: String!
+        genre: String!
+        duration: Int!
+        jam_tayang: String!
+        seat_available: Int
+        price: Float!
+    ): Movie! @create
+
+    updateMovie(
+        id: ID!
+        title: String
+        genre: String
+        duration: Int
+        jam_tayang: String
+        seat_available: Int
+        price: Float
+    ): Movie! @update
+
+    deleteMovie(
+        id: ID!
+    ): Movie @delete
+}
+
+type Movie {
+    id: ID!
+    title: String!
+    genre: String!
+    duration: Int!
+    jam_tayang: String!
+    seat_available: Int!
+    price: Float!
+    created_at: DateTime
+    updated_at: DateTime
+}

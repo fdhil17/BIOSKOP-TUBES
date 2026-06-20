@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  bioskop-postgres:
+    image: postgres:15
+    platform: linux/amd64
+    container_name: bioskop-postgres
+    restart: always
+    environment:
+      - TZ=Asia/Jakarta
+      - POSTGRES_PASSWORD=root
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-postgres.sql
+    networks:
+      - bioskop-network
+
+  bioskop-hasura:
+    image: hasura/graphql-engine:v2.30.0
+    container_name: bioskop-hasura
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:root@bioskop-postgres:5432/postgres
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+      HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+    depends_on:
+      - bioskop-postgres
+    networks:
+      - bioskop-network
+
+  redis:
+    image: redis:alpine
+    platform: linux/amd64
+    container_name: bioskop-redis
+    restart: always
+    environment:
+      - TZ=Asia/Jakarta
+    ports:
+      - "6379:6379"
+    networks:
+      - bioskop-network
+
+  member-service:
+    build:
+      context: ./member-service
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: member-service
+    restart: always
+    command: php artisan serve --host=0.0.0.0 --port=8001
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./member-service:/var/www
+      - /var/www/vendor
+    environment:
+      - TZ=Asia/Jakarta
+      - APP_NAME=MemberService
+      - APP_ENV=local
+      - APP_KEY=base64:YVQ+CZu4+iVmcEDzQh2mIruuQtLtfkizbXvYGkVZrXU=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8001
+      - DB_CONNECTION=pgsql
+      - DB_HOST=bioskop-postgres
+      - DB_PORT=5432
+      - DB_DATABASE=db_member_service
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=root
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - TICKET_SERVICE_URL=http://ticket-service:8003
+    depends_on:
+      - bioskop-postgres
+      - redis
+    networks:
+      - bioskop-network
+
+  movie-service:
+    build:
+      context: ./movie-service
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: movie-service
+    restart: always
+    command: php artisan serve --host=0.0.0.0 --port=8002
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./movie-service:/var/www
+      - /var/www/vendor
+    environment:
+      - TZ=Asia/Jakarta
+      - APP_NAME=MovieService
+      - APP_ENV=local
+      - APP_KEY=base64:I08dTdYnUOyQFiiwKd4d1pOEqa3TGfsReUKGQ5bnpT8=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8002
+      - DB_CONNECTION=pgsql
+      - DB_HOST=bioskop-postgres
+      - DB_PORT=5432
+      - DB_DATABASE=db_movie_service
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=root
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - TICKET_SERVICE_URL=http://ticket-service:8003
+    depends_on:
+      - bioskop-postgres
+      - redis
+    networks:
+      - bioskop-network
+
+  ticket-service:
+    build:
+      context: ./ticket-service
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: ticket-service
+    restart: always
+    command: php artisan serve --host=0.0.0.0 --port=8003
+    ports:
+      - "8003:8003"
+    environment:
+      - TZ=Asia/Jakarta
+      - APP_NAME=TicketService
+      - APP_ENV=local
+      - APP_KEY=base64:w3Kitd9iVTcAAFH8ZsJR8EFS17xFOLHthRORDRX/7pg=
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8003
+      - DB_CONNECTION=pgsql
+      - DB_HOST=bioskop-postgres
+      - DB_PORT=5432
+      - DB_DATABASE=db_ticket_service
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=root
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - MEMBER_SERVICE_URL=http://member-service:8001
+      - MOVIE_SERVICE_URL=http://movie-service:8002
+    depends_on:
+      - bioskop-postgres
+      - redis
+    networks:
+      - bioskop-network
+
+  queue-worker:
+    build:
+      context: ./ticket-service
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: queue-worker
+    restart: always
+    command: php artisan queue:work redis --sleep=3 --tries=3
+    environment:
+      - TZ=Asia/Jakarta
+      - APP_NAME=QueueWorker
+      - APP_ENV=local
+      - APP_KEY=base64:w3Kitd9iVTcAAFH8ZsJR8EFS17xFOLHthRORDRX/7pg=
+      - DB_CONNECTION=pgsql
+      - DB_HOST=bioskop-postgres
+      - DB_PORT=5432
+      - DB_DATABASE=db_ticket_service
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=root
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - MEMBER_SERVICE_URL=http://member-service:8001
+      - MOVIE_SERVICE_URL=http://movie-service:8002
+    depends_on:
+      - bioskop-postgres
+      - redis
+      - ticket-service
+    networks:
+      - bioskop-network
+
+volumes:
+  postgres_data:
+
+networks:
+  bioskop-network:
+    driver: bridge
