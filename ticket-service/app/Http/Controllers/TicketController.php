@@ -89,6 +89,9 @@ class TicketController extends Controller
             'change' => -$request->quantity
         ]);
 
+        // Dispatch Job ke Redis
+        \App\Jobs\ProcessTicketNotification::dispatch($ticket, $memberResponse->json()['data'], $movie);
+
         return response()->json([
             'status'  => 'success',
             'message' => 'Tiket berhasil dibeli',

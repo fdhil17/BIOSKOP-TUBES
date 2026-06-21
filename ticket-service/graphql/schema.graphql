@@ -1,0 +1,40 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+type Query {
+    tickets: [Ticket!]! @all
+
+    ticket(
+        id: ID! @eq
+    ): Ticket @find
+}
+
+type Mutation {
+    createTicket(
+        member_id: ID!
+        movie_id: ID!
+        quantity: Int!
+        total_price: Float!
+        status: String!
+    ): Ticket! @create
+
+    updateTicket(
+        id: ID!
+        status: String
+    ): Ticket! @update
+
+    deleteTicket(
+        id: ID!
+    ): Ticket @delete
+}
+
+type Ticket {
+    id: ID!
+    member_id: ID!
+    movie_id: ID!
+    quantity: Int!
+    total_price: Float!
+    status: String!
+    created_at: DateTime
+    updated_at: DateTime
+}
