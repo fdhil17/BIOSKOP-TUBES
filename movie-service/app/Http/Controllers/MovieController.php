@@ -101,4 +101,30 @@ class MovieController extends Controller
 
         return $this->apiResponse('success', 'Film berhasil dihapus');
     }
+
+    public function updateSeat(Request $request, int $id): JsonResponse
+    {
+        $movie = Movie::find($id);
+
+        if (!$movie) {
+            return $this->apiResponse('failed', 'Film tidak ditemukan', null, 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'change' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $movie->seat_available += $request->change;
+        $movie->save();
+
+        return $this->apiResponse('success', 'Seat berhasil diupdate', $movie);
+    }
 }

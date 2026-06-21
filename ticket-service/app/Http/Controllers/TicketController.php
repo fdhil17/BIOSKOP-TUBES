@@ -16,6 +16,24 @@ class TicketController extends Controller
         ]);
     }
 
+    // PROVIDER: Detail tiket by ID
+    public function show($id)
+    {
+        $ticket = Ticket::find($id);
+        
+        if (!$ticket) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tiket tidak ditemukan'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $ticket
+        ]);
+    }
+
     // PROVIDER: Tiket by member_id
     public function byMember($memberId)
     {
