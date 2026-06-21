@@ -1,0 +1,38 @@
+"A datetime string with format `Y-m-d H:i:s`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+type Query {
+    members: [Member!]! @all
+
+    member(
+        id: ID! @eq
+    ): Member @find
+}
+
+type Mutation {
+    createMember(
+        name: String!
+        email: String!
+        phone: String
+    ): Member! @create
+
+    updateMember(
+        id: ID!
+        name: String
+        email: String
+        phone: String
+    ): Member! @update
+
+    deleteMember(
+        id: ID!
+    ): Member @delete
+}
+
+type Member {
+    id: ID!
+    name: String!
+    email: String!
+    phone: String
+    created_at: DateTime
+    updated_at: DateTime
+}
